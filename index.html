@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -164,56 +163,5 @@ await deleteDoc(doc(db, 'tasks', docSnap.id));
 <h2>Liste des tâches</h2>
 <div id="taskList"></div>
 <button id="deleteDone">Supprimer les tâches terminées</button>
-</body>
-</html>
-
-    document.getElementById('taskForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const title = document.getElementById('title').value;
-      const desc = document.getElementById('description').value;
-      const start = document.getElementById('startDate').value;
-      const end = document.getElementById('endDate').value;
-      taskList.push({ title, desc, start, end, status: 'Non commencé' });
-      this.reset();
-      renderTasks();
-    });
-
-    function renderTasks() {
-      const container = document.getElementById('taskList');
-      container.innerHTML = '';
-      taskList.forEach((task, index) => {
-        const div = document.createElement('div');
-        const statusClass = task.status === 'Non commencé' ? 'non-commence'
-                          : task.status === 'En cours' ? 'en-cours'
-                          : 'termine';
-        div.className = `task ${statusClass}`;
-        div.innerHTML = `
-          <strong>${task.title}</strong><br>
-          <div class="description">${task.desc}</div>
-          Du ${task.start} au ${task.end}<br>
-          <em>Statut: ${task.status}</em>
-        `;
-        div.onclick = () => cycleStatus(index);
-        container.appendChild(div);
-      });
-    }
-
-    function cycleStatus(index) {
-      const statusCycle = ['Non commencé', 'En cours', 'Terminé'];
-      const current = taskList[index].status;
-      const next = statusCycle[(statusCycle.indexOf(current) + 1) % statusCycle.length];
-      taskList[index].status = next;
-      renderTasks();
-    }
-
-    function deleteCompleted() {
-      for (let i = taskList.length - 1; i >= 0; i--) {
-        if (taskList[i].status === 'Terminé') {
-          taskList.splice(i, 1);
-        }
-      }
-      renderTasks();
-    }
-  </script>
 </body>
 </html>
