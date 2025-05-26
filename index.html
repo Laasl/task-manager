@@ -56,11 +56,9 @@ cursor: pointer;
 
 <!-- Firebase SDKs -->
 <script type="module">
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
 apiKey: "AIzaSyBqjP4QxVKT0LbNvSMVcdrhH0IKji4_XpA",
 authDomain: "pdca-fb469.firebaseapp.com",
@@ -71,19 +69,15 @@ appId: "1:207233804691:web:c3f0ba6bc1212a2276e066",
 measurementId: "G-SBW3W8TJ09"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// DOM elements
 const taskForm = document.getElementById('taskForm');
 const taskListDiv = document.getElementById('taskList');
 const deleteDoneBtn = document.getElementById('deleteDone');
 
-// Statuts possibles
 const statusCycle = ['Non commencé', 'En cours', 'Terminé'];
 
-// Fonction pour afficher les tâches
 function renderTasks(tasks) {
 taskListDiv.innerHTML = '';
 tasks.forEach(task => {
@@ -96,7 +90,6 @@ Du ${task.startDate} au ${task.endDate}<br>
 <em>Statut: ${task.status}</em>
 `;
 div.onclick = async () => {
-// Changer statut en cycle
 const currentIndex = statusCycle.indexOf(task.status);
 const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
 await updateDoc(doc(db, 'tasks', task.id), { status: nextStatus });
@@ -105,7 +98,6 @@ taskListDiv.appendChild(div);
 });
 }
 
-// Récupération en temps réel des tâches triées par date de début
 const q = query(collection(db, 'tasks'), orderBy('startDate'));
 onSnapshot(q, (snapshot) => {
 const tasks = [];
@@ -115,7 +107,6 @@ tasks.push({ id: doc.id, ...doc.data() });
 renderTasks(tasks);
 });
 
-// Ajout d’une nouvelle tâche
 taskForm.addEventListener('submit', async e => {
 e.preventDefault();
 const title = taskForm.title.value.trim();
@@ -139,14 +130,14 @@ status: 'Non commencé'
 taskForm.reset();
 });
 
-// Suppression des tâches terminées
 deleteDoneBtn.onclick = async () => {
 const snapshot = await getDocs(collection(db, 'tasks'));
-snapshot.forEach(async docSnap => {
-if (docSnap.data().status === 'Terminé') {
-await deleteDoc(doc(db, 'tasks', docSnap.id));
-}
-});
+const batchDeletes = snapshot.docs
+.filter(docSnap => docSnap.data().status === 'Terminé')
+.map(docSnap => deleteDoc(doc(db, 'tasks', docSnap.id)));
+
+await Promise.all(batchDeletes);
+
 };
 </script>
 </head>
