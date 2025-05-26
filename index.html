@@ -28,8 +28,8 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .non-commence { background-color: #ffffff; }
-    .en-cours { background-color: #ffe0b2; }
-    .termine { background-color: #c8e6c9; text-decoration: line-through; }
+    .en-cours { background-color: #f5bb1b; }
+    .termine { background-color: #1bf56f; text-decoration: line-through; }
     .overlay, .modal {
       display: none;
     }
@@ -129,7 +129,10 @@
       snapshot.forEach(docSnap => {
         const t = docSnap.data();
         const div = document.createElement("div");
-        div.className = `task ${t.status.replace(" ", "-").toLowerCase()}`;
+        div.className = "task " + 
+      (t.status === "Terminé" ? "termine" : 
+       t.status === "En cours" ? "en-cours" : 
+       "non-commence");
         div.innerHTML = `
           <strong>${t.title}</strong><br/>
           ${t.description}<br/>
@@ -175,3 +178,4 @@
   </script>
 </body>
 </html>
+
