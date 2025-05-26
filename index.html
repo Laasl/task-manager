@@ -28,8 +28,8 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .non-commence { background-color: #ffffff; }
-    .en-cours { background-color: #f5bb1b; }
-    .termine { background-color: #1bf56f; text-decoration: line-through; }
+    .en-cours { background-color: #e0e33d; }
+    .termine { background-color: #3de3a1; text-decoration: line-through; }
     .overlay, .modal {
       display: none;
     }
@@ -71,7 +71,16 @@
     <button type="submit">Ajouter</button>
   </form>
 
-  <div id="taskList"></div>
+  
+    <label for="filterStatus"><strong>Filtrer par statut :</strong></label>
+    <select id="filterStatus">
+      <option value="Tous">Tous</option>
+      <option value="Non commencé">Non commencé</option>
+      <option value="En cours">En cours</option>
+      <option value="Terminé">Terminé</option>
+    </select>
+    <div id="taskList"></div>
+    
 
   <div class="overlay" id="overlay" onclick="closeModal()"></div>
   <div class="modal" id="modal">
@@ -124,7 +133,40 @@
       form.reset();
     });
 
+    
+    let allTasks = [];
     onSnapshot(collection(db, "tasks"), snapshot => {
+      allTasks = [];
+      snapshot.forEach(docSnap => {
+        allTasks.push({ id: docSnap.id, data: docSnap.data() });
+      });
+      renderTasks(document.getElementById("filterStatus").value);
+    });
+
+    document.getElementById("filterStatus").addEventListener("change", () => {
+      renderTasks(document.getElementById("filterStatus").value);
+    });
+
+    function renderTasks(filter) {
+      taskList.innerHTML = "";
+      allTasks.forEach(({ id, data: t }) => {
+        if (filter !== "Tous" && t.status !== filter) return;
+        const div = document.createElement("div");
+        div.className = "task " + 
+          (t.status === "Terminé" ? "termine" : 
+          t.status === "En cours" ? "en-cours" : 
+          "non-commence");
+        div.innerHTML = `
+          <strong>${t.title}</strong><br/>
+          ${t.description}<br/>
+          <em>Pilote : ${t.pilote}</em><br/>
+          <small>${t.startDate} → ${t.endDate}</small><br/>
+          <button onclick="openEdit('${id}', \`${t.title}\`, \`${t.description}\`, \`${t.pilote}\`, '${t.startDate}', '${t.endDate}', '${t.status}')">🧐 Voir / Modifier</button>
+        `;
+        taskList.appendChild(div);
+      });
+    }
+    
       taskList.innerHTML = "";
       snapshot.forEach(docSnap => {
         const t = docSnap.data();
@@ -178,4 +220,3 @@
   </script>
 </body>
 </html>
-
