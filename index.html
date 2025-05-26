@@ -1,209 +1,177 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<title>Gestionnaire de tâches avec Firebase</title>
-<style>
-body {
-font-family: Arial, sans-serif;
-font-size: 20px;
-line-height: 1.6;
-padding: 20px;
-background: #f5f5f5;
-}
-h2 {
-margin-top: 40px;
-}
-form input, form textarea, form button {
-font-size: 18px;
-padding: 10px;
-margin: 5px 0;
-box-sizing: border-box;
-}
-form input[type="date"] {
-width: 48%;
-}
-form input[type="text"], form textarea {
-width: 100%;
-}
-.task {
-border-radius: 10px;
-border: 1px solid #ccc;
-padding: 20px;
-margin: 15px 0;
-cursor: pointer;
-transition: background-color 0.3s ease;
-position: relative;
-}
-.task.non-commence {
-background-color: #ffffff;
-color: #000;
-}
-.task.en-cours {
-background-color: #ffb74d;
-color: #000;
-}
-.task.termine {
-background-color: #4caf50;
-color: #fff;
-text-decoration: line-through;
-}
-.description {
-font-size: 20px;
-margin: 10px 0;
-}
-.pilote {
-font-style: italic;
-font-size: 18px;
-}
-.edit-btn {
-position: absolute;
-top: 10px;
-right: 10px;
-font-size: 18px;
-background: none;
-border: none;
-cursor: pointer;
-}
-button {
-padding: 12px 20px;
-font-size: 18px;
-margin-top: 10px;
-cursor: pointer;
-}
-</style>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
-
-const firebaseConfig = {
-apiKey: "AIzaSyBqjP4QxVKT0LbNvSMVcdrhH0IKji4_XpA",
-authDomain: "pdca-fb469.firebaseapp.com",
-projectId: "pdca-fb469",
-storageBucket: "pdca-fb469.firebasestorage.app",
-messagingSenderId: "207233804691",
-appId: "1:207233804691:web:c3f0ba6bc1212a2276e066",
-measurementId: "G-SBW3W8TJ09"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const taskForm = document.getElementById('taskForm');
-const taskListDiv = document.getElementById('taskList');
-const deleteDoneBtn = document.getElementById('deleteDone');
-
-const statusCycle = ['Non commencé', 'En cours', 'Terminé'];
-
-let editTaskId = null;
-
-function renderTasks(tasks) {
-taskListDiv.innerHTML = '';
-tasks.forEach(task => {
-const div = document.createElement('div');
-div.className = 'task ' + (task.status === 'Non commencé' ? 'non-commence' : task.status === 'En cours' ? 'en-cours' : 'termine');
-div.innerHTML = `
-<button class="edit-btn" title="Modifier">✏️</button>
-<strong>${task.title}</strong><br>
-<div class="description">${task.description}</div>
-<div class="pilote">👤 Pilote : ${task.pilote}</div>
-Du ${task.startDate} au ${task.endDate}<br>
-<em>Statut: ${task.status}</em>
-`;
-
-// Changer statut au clic sur la carte
-div.onclick = async (e) => {
-if (e.target.classList.contains('edit-btn')) return; // éviter conflit avec bouton modifier
-const currentIndex = statusCycle.indexOf(task.status);
-const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
-await updateDoc(doc(db, 'tasks', task.id), { status: nextStatus });
-};
-
-// Bouton modifier
-div.querySelector('.edit-btn').onclick = (e) => {
-e.stopPropagation();
-taskForm.title.value = task.title;
-taskForm.description.value = task.description;
-taskForm.pilote.value = task.pilote || '';
-taskForm.startDate.value = task.startDate;
-taskForm.endDate.value = task.endDate;
-editTaskId = task.id;
-};
-
-taskListDiv.appendChild(div);
-});
-}
-
-const q = query(collection(db, 'tasks'), orderBy('startDate'));
-onSnapshot(q, (snapshot) => {
-const tasks = [];
-snapshot.forEach(doc => {
-tasks.push({ id: doc.id, ...doc.data() });
-});
-renderTasks(tasks);
-});
-
-taskForm.addEventListener('submit', async e => {
-e.preventDefault();
-const title = taskForm.title.value.trim();
-const description = taskForm.description.value.trim();
-const pilote = taskForm.pilote.value.trim();
-const startDate = taskForm.startDate.value;
-const endDate = taskForm.endDate.value;
-
-if (!title || !description || !startDate || !endDate || !pilote) {
-alert("Merci de remplir tous les champs");
-return;
-}
-
-if (editTaskId) {
-await updateDoc(doc(db, 'tasks', editTaskId), {
-title, description, pilote, startDate, endDate
-});
-editTaskId = null;
-} else {
-await addDoc(collection(db, 'tasks'), {
-title,
-description,
-pilote,
-startDate,
-endDate,
-status: 'Non commencé'
-});
-}
-
-taskForm.reset();
-});
-
-deleteDoneBtn.onclick = async () => {
-const confirmDelete = confirm("Supprimer toutes les tâches marquées comme 'Terminé' ?");
-if (!confirmDelete) return;
-
-const snapshot = await getDocs(collection(db, 'tasks'));
-const batchDeletes = snapshot.docs
-.filter(docSnap => docSnap.data().status === 'Terminé')
-.map(docSnap => deleteDoc(doc(db, 'tasks', docSnap.id)));
-
-await Promise.all(batchDeletes);
-};
-</script>
+  <meta charset="UTF-8" />
+  <title>PDCA Tâches</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      background: #f9f9f9;
+      padding: 20px;
+    }
+    form input, form textarea, form button, select {
+      font-size: 16px;
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="date"] {
+      width: 49%;
+    }
+    .task {
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px 0;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .non-commence { background-color: #ffffff; }
+    .en-cours { background-color: #ffe0b2; }
+    .termine { background-color: #c8e6c9; text-decoration: line-through; }
+    .overlay, .modal {
+      display: none;
+    }
+    .overlay.active {
+      display: block;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10;
+    }
+    .modal.active {
+      display: block;
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 20px;
+      z-index: 11;
+      box-shadow: 0 0 10px #00000055;
+      border-radius: 10px;
+      width: 300px;
+    }
+  </style>
 </head>
 <body>
-<h2>Ajouter ou modifier une tâche</h2>
-<form id="taskForm">
-<input name="title" type="text" placeholder="Titre" required />
-<textarea name="description" placeholder="Description" required style="height: 80px;"></textarea>
-<input name="pilote" type="text" placeholder="Pilote" required />
-<div style="display: flex; gap: 4%;">
-<input name="startDate" type="date" required />
-<input name="endDate" type="date" required />
-</div>
-<button type="submit">Enregistrer</button>
-</form>
+  <h2>Ajouter une tâche</h2>
+  <form id="taskForm">
+    <input type="text" id="title" placeholder="Titre" required />
+    <textarea id="description" placeholder="Description" required></textarea>
+    <input type="text" id="pilote" placeholder="Pilote" required />
+    <input type="date" id="startDate" required />
+    <input type="date" id="endDate" required />
+    <select id="status">
+      <option value="Non commencé">Non commencé</option>
+      <option value="En cours">En cours</option>
+      <option value="Terminé">Terminé</option>
+    </select>
+    <button type="submit">Ajouter</button>
+  </form>
 
-<h2>Liste des tâches</h2>
-<div id="taskList"></div>
-<button id="deleteDone">🗑️ Supprimer les tâches terminées</button>
+  <div id="taskList"></div>
+
+  <div class="overlay" id="overlay" onclick="closeModal()"></div>
+  <div class="modal" id="modal">
+    <form id="editForm">
+      <input type="text" id="editTitle" required />
+      <textarea id="editDescription" required></textarea>
+      <input type="text" id="editPilote" required />
+      <input type="date" id="editStartDate" required />
+      <input type="date" id="editEndDate" required />
+      <select id="editStatus">
+        <option value="Non commencé">Non commencé</option>
+        <option value="En cours">En cours</option>
+        <option value="Terminé">Terminé</option>
+      </select>
+      <button type="submit">💾 Enregistrer</button>
+    </form>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBqjP4QxVKT0LbNvSMVcdrhH0IKji4_XpA",
+      authDomain: "pdca-fb469.firebaseapp.com",
+      projectId: "pdca-fb469",
+      storageBucket: "pdca-fb469.appspot.com",
+      messagingSenderId: "207233804691",
+      appId: "1:207233804691:web:c3f0ba6bc1212a2276e066"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const taskList = document.getElementById("taskList");
+    const form = document.getElementById("taskForm");
+
+    let currentEditId = null;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const task = {
+        title: form.title.value,
+        description: form.description.value,
+        pilote: form.pilote.value,
+        startDate: form.startDate.value,
+        endDate: form.endDate.value,
+        status: form.status.value
+      };
+      await addDoc(collection(db, "tasks"), task);
+      form.reset();
+    });
+
+    onSnapshot(collection(db, "tasks"), snapshot => {
+      taskList.innerHTML = "";
+      snapshot.forEach(docSnap => {
+        const t = docSnap.data();
+        const div = document.createElement("div");
+        div.className = `task ${t.status.replace(" ", "-").toLowerCase()}`;
+        div.innerHTML = `
+          <strong>${t.title}</strong><br/>
+          ${t.description}<br/>
+          <em>Pilote : ${t.pilote}</em><br/>
+          <small>${t.startDate} → ${t.endDate}</small><br/>
+          <button onclick="openEdit('${docSnap.id}', \`${t.title}\`, \`${t.description}\`, \`${t.pilote}\`, '${t.startDate}', '${t.endDate}', '${t.status}')">🧐 Voir / Modifier</button>
+        `;
+        taskList.appendChild(div);
+      });
+    });
+
+    window.openEdit = function(id, title, description, pilote, start, end, status) {
+      currentEditId = id;
+      document.getElementById("editTitle").value = title;
+      document.getElementById("editDescription").value = description;
+      document.getElementById("editPilote").value = pilote;
+      document.getElementById("editStartDate").value = start;
+      document.getElementById("editEndDate").value = end;
+      document.getElementById("editStatus").value = status;
+      document.getElementById("modal").classList.add("active");
+      document.getElementById("overlay").classList.add("active");
+    }
+
+    window.closeModal = function() {
+      document.getElementById("modal").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+      currentEditId = null;
+    }
+
+    document.getElementById("editForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const ref = doc(db, "tasks", currentEditId);
+      await updateDoc(ref, {
+        title: document.getElementById("editTitle").value,
+        description: document.getElementById("editDescription").value,
+        pilote: document.getElementById("editPilote").value,
+        startDate: document.getElementById("editStartDate").value,
+        endDate: document.getElementById("editEndDate").value,
+        status: document.getElementById("editStatus").value
+      });
+      closeModal();
+    });
+  </script>
 </body>
 </html>
