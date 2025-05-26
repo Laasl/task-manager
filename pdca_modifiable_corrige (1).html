@@ -1,0 +1,181 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>PDCA Tâches</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      background: #f9f9f9;
+      padding: 20px;
+    }
+    form input, form textarea, form button, select {
+      font-size: 16px;
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="date"] {
+      width: 49%;
+    }
+    .task {
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px 0;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .non-commence { background-color: #ffffff; }
+    .en-cours { background-color: #edea2f; }
+    .termine { background-color: #1eeb8f; text-decoration: line-through; }
+    .overlay, .modal {
+      display: none;
+    }
+    .overlay.active {
+      display: block;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10;
+    }
+    .modal.active {
+      display: block;
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 20px;
+      z-index: 11;
+      box-shadow: 0 0 10px #00000055;
+      border-radius: 10px;
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Ajouter une tâche</h2>
+  <form id="taskForm">
+    <input type="text" id="title" placeholder="Titre" required />
+    <textarea id="description" placeholder="Description" required></textarea>
+    <input type="text" id="pilote" placeholder="Pilote" required />
+    <input type="date" id="startDate" required />
+    <input type="date" id="endDate" required />
+    <select id="status">
+      <option value="Non commencé">Non commencé</option>
+      <option value="En cours">En cours</option>
+      <option value="Terminé">Terminé</option>
+    </select>
+    <button type="submit">Ajouter</button>
+  </form>
+
+  <div id="taskList"></div>
+
+  <div class="overlay" id="overlay" onclick="closeModal()"></div>
+  <div class="modal" id="modal">
+    <form id="editForm">
+      <input type="text" id="editTitle" required />
+      <textarea id="editDescription" required></textarea>
+      <input type="text" id="editPilote" required />
+      <input type="date" id="editStartDate" required />
+      <input type="date" id="editEndDate" required />
+      <select id="editStatus">
+        <option value="Non commencé">Non commencé</option>
+        <option value="En cours">En cours</option>
+        <option value="Terminé">Terminé</option>
+      </select>
+      <button type="submit">💾 Enregistrer</button>
+    </form>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBqjP4QxVKT0LbNvSMVcdrhH0IKji4_XpA",
+      authDomain: "pdca-fb469.firebaseapp.com",
+      projectId: "pdca-fb469",
+      storageBucket: "pdca-fb469.appspot.com",
+      messagingSenderId: "207233804691",
+      appId: "1:207233804691:web:c3f0ba6bc1212a2276e066"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const taskList = document.getElementById("taskList");
+    const form = document.getElementById("taskForm");
+
+    let currentEditId = null;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const task = {
+        title: form.title.value,
+        description: form.description.value,
+        pilote: form.pilote.value,
+        startDate: form.startDate.value,
+        endDate: form.endDate.value,
+        status: form.status.value
+      };
+      await addDoc(collection(db, "tasks"), task);
+      form.reset();
+    });
+
+    onSnapshot(collection(db, "tasks"), snapshot => {
+      taskList.innerHTML = "";
+      snapshot.forEach(docSnap => {
+        const t = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "task " + 
+      (t.status === "Terminé" ? "termine" : 
+       t.status === "En cours" ? "en-cours" : 
+       "non-commence");
+        div.innerHTML = `
+          <strong>${t.title}</strong><br/>
+          ${t.description}<br/>
+          <em>Pilote : ${t.pilote}</em><br/>
+          <small>${t.startDate} → ${t.endDate}</small><br/>
+          <button onclick="openEdit('${docSnap.id}', \`${t.title}\`, \`${t.description}\`, \`${t.pilote}\`, '${t.startDate}', '${t.endDate}', '${t.status}')">🧐 Voir / Modifier</button>
+        `;
+        taskList.appendChild(div);
+      });
+    });
+
+    window.openEdit = function(id, title, description, pilote, start, end, status) {
+      currentEditId = id;
+      document.getElementById("editTitle").value = title;
+      document.getElementById("editDescription").value = description;
+      document.getElementById("editPilote").value = pilote;
+      document.getElementById("editStartDate").value = start;
+      document.getElementById("editEndDate").value = end;
+      document.getElementById("editStatus").value = status;
+      document.getElementById("modal").classList.add("active");
+      document.getElementById("overlay").classList.add("active");
+    }
+
+    window.closeModal = function() {
+      document.getElementById("modal").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+      currentEditId = null;
+    }
+
+    document.getElementById("editForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const ref = doc(db, "tasks", currentEditId);
+      await updateDoc(ref, {
+        title: document.getElementById("editTitle").value,
+        description: document.getElementById("editDescription").value,
+        pilote: document.getElementById("editPilote").value,
+        startDate: document.getElementById("editStartDate").value,
+        endDate: document.getElementById("editEndDate").value,
+        status: document.getElementById("editStatus").value
+      });
+      closeModal();
+    });
+  </script>
+</body>
+</html>
