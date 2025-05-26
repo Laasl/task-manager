@@ -15,11 +15,16 @@ h2 {
 margin-top: 40px;
 }
 form input, form textarea, form button {
-font-size: 20px;
-padding: 12px;
+font-size: 18px;
+padding: 10px;
 margin: 5px 0;
-width: 100%;
 box-sizing: border-box;
+}
+form input[type="date"] {
+width: 48%;
+}
+form input[type="text"], form textarea {
+width: 100%;
 }
 .task {
 border-radius: 10px;
@@ -28,33 +33,46 @@ padding: 20px;
 margin: 15px 0;
 cursor: pointer;
 transition: background-color 0.3s ease;
+position: relative;
 }
 .task.non-commence {
 background-color: #ffffff;
 color: #000;
 }
 .task.en-cours {
-background-color: #ffb74d; /* orange */
+background-color: #ffb74d;
 color: #000;
 }
 .task.termine {
-background-color: #4caf50; /* vert */
+background-color: #4caf50;
 color: #fff;
 text-decoration: line-through;
 }
 .description {
-font-size: 22px;
-margin: 12px 0;
+font-size: 20px;
+margin: 10px 0;
+}
+.pilote {
+font-style: italic;
+font-size: 18px;
+}
+.edit-btn {
+position: absolute;
+top: 10px;
+right: 10px;
+font-size: 18px;
+background: none;
+border: none;
+cursor: pointer;
 }
 button {
-padding: 14px 24px;
-font-size: 20px;
+padding: 12px 20px;
+font-size: 18px;
 margin-top: 10px;
 cursor: pointer;
 }
 </style>
 
-<!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
 import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
@@ -78,22 +96,41 @@ const deleteDoneBtn = document.getElementById('deleteDone');
 
 const statusCycle = ['Non commencé', 'En cours', 'Terminé'];
 
+let editTaskId = null;
+
 function renderTasks(tasks) {
 taskListDiv.innerHTML = '';
 tasks.forEach(task => {
 const div = document.createElement('div');
 div.className = 'task ' + (task.status === 'Non commencé' ? 'non-commence' : task.status === 'En cours' ? 'en-cours' : 'termine');
 div.innerHTML = `
+<button class="edit-btn" title="Modifier">✏️</button>
 <strong>${task.title}</strong><br>
 <div class="description">${task.description}</div>
+<div class="pilote">👤 Pilote : ${task.pilote}</div>
 Du ${task.startDate} au ${task.endDate}<br>
 <em>Statut: ${task.status}</em>
 `;
-div.onclick = async () => {
+
+// Changer statut au clic sur la carte
+div.onclick = async (e) => {
+if (e.target.classList.contains('edit-btn')) return; // éviter conflit avec bouton modifier
 const currentIndex = statusCycle.indexOf(task.status);
 const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
 await updateDoc(doc(db, 'tasks', task.id), { status: nextStatus });
 };
+
+// Bouton modifier
+div.querySelector('.edit-btn').onclick = (e) => {
+e.stopPropagation();
+taskForm.title.value = task.title;
+taskForm.description.value = task.description;
+taskForm.pilote.value = task.pilote || '';
+taskForm.startDate.value = task.startDate;
+taskForm.endDate.value = task.endDate;
+editTaskId = task.id;
+};
+
 taskListDiv.appendChild(div);
 });
 }
@@ -111,48 +148,62 @@ taskForm.addEventListener('submit', async e => {
 e.preventDefault();
 const title = taskForm.title.value.trim();
 const description = taskForm.description.value.trim();
+const pilote = taskForm.pilote.value.trim();
 const startDate = taskForm.startDate.value;
 const endDate = taskForm.endDate.value;
 
-if (!title || !description || !startDate || !endDate) {
+if (!title || !description || !startDate || !endDate || !pilote) {
 alert("Merci de remplir tous les champs");
 return;
 }
 
+if (editTaskId) {
+await updateDoc(doc(db, 'tasks', editTaskId), {
+title, description, pilote, startDate, endDate
+});
+editTaskId = null;
+} else {
 await addDoc(collection(db, 'tasks'), {
 title,
 description,
+pilote,
 startDate,
 endDate,
 status: 'Non commencé'
 });
+}
 
 taskForm.reset();
 });
 
 deleteDoneBtn.onclick = async () => {
+const confirmDelete = confirm("Supprimer toutes les tâches marquées comme 'Terminé' ?");
+if (!confirmDelete) return;
+
 const snapshot = await getDocs(collection(db, 'tasks'));
 const batchDeletes = snapshot.docs
 .filter(docSnap => docSnap.data().status === 'Terminé')
 .map(docSnap => deleteDoc(doc(db, 'tasks', docSnap.id)));
 
 await Promise.all(batchDeletes);
-
 };
 </script>
 </head>
 <body>
-<h2>Ajouter une tâche</h2>
+<h2>Ajouter ou modifier une tâche</h2>
 <form id="taskForm">
 <input name="title" type="text" placeholder="Titre" required />
 <textarea name="description" placeholder="Description" required style="height: 80px;"></textarea>
+<input name="pilote" type="text" placeholder="Pilote" required />
+<div style="display: flex; gap: 4%;">
 <input name="startDate" type="date" required />
 <input name="endDate" type="date" required />
-<button type="submit">Ajouter</button>
+</div>
+<button type="submit">Enregistrer</button>
 </form>
 
 <h2>Liste des tâches</h2>
 <div id="taskList"></div>
-<button id="deleteDone">Supprimer les tâches terminées</button>
+<button id="deleteDone">🗑️ Supprimer les tâches terminées</button>
 </body>
 </html>
