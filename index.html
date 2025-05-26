@@ -73,6 +73,9 @@
 
   <div id="taskList"></div>
 
+  <button onclick="deleteCompletedTasks()">🗑️ Supprimer les tâches terminées</button>
+
+
   <div class="overlay" id="overlay" onclick="closeModal()"></div>
   <div class="modal" id="modal">
     <form id="editForm">
@@ -92,7 +95,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBqjP4QxVKT0LbNvSMVcdrhH0IKji4_XpA",
@@ -161,6 +164,18 @@
       document.getElementById("overlay").classList.remove("active");
       currentEditId = null;
     }
+
+    
+    window.deleteCompletedTasks = async function () {
+      if (!confirm("Voulez-vous vraiment supprimer toutes les tâches terminées ?")) return;
+      const snapshot = await getDocs(collection(db, "tasks"));
+      snapshot.forEach(async docSnap => {
+        const data = docSnap.data();
+        if (data.status === "Terminé") {
+          await deleteDoc(doc(db, "tasks", docSnap.id));
+        }
+      });
+    };
 
     document.getElementById("editForm").addEventListener("submit", async (e) => {
       e.preventDefault();
