@@ -2,71 +2,170 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Gestionnaire de tâches</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 18px;
-      line-height: 1.6;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    h2 {
-      margin-top: 40px;
-    }
-    form input, form button {
-      font-size: 18px;
-      padding: 10px;
-      margin: 5px 0;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .task {
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      padding: 20px;
-      margin: 15px 0;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    .task.non-commence {
-      background-color: #ffffff;
-    }
-    .task.en-cours {
-      background-color: #ffe4b3;
-    }
-    .task.termine {
-      background-color: #e0ffe0;
-      text-decoration: line-through;
-    }
-    .description {
-      font-size: 20px;
-      margin: 10px 0;
-    }
-    button {
-      padding: 12px 20px;
-      font-size: 18px;
-      margin-top: 10px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Gestionnaire de tâches avec Firebase</title>
+<style>
+body {
+font-family: Arial, sans-serif;
+font-size: 20px;
+line-height: 1.6;
+padding: 20px;
+background: #f5f5f5;
+}
+h2 {
+margin-top: 40px;
+}
+form input, form textarea, form button {
+font-size: 20px;
+padding: 12px;
+margin: 5px 0;
+width: 100%;
+box-sizing: border-box;
+}
+.task {
+border-radius: 10px;
+border: 1px solid #ccc;
+padding: 20px;
+margin: 15px 0;
+cursor: pointer;
+transition: background-color 0.3s ease;
+}
+.task.non-commence {
+background-color: #ffffff;
+color: #000;
+}
+.task.en-cours {
+background-color: #ffb74d; /* orange */
+color: #000;
+}
+.task.termine {
+background-color: #4caf50; /* vert */
+color: #fff;
+text-decoration: line-through;
+}
+.description {
+font-size: 22px;
+margin: 12px 0;
+}
+button {
+padding: 14px 24px;
+font-size: 20px;
+margin-top: 10px;
+cursor: pointer;
+}
+</style>
+
+<!-- Firebase SDKs -->
+<script type="module">
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+apiKey: "AIzaSyBqjP4QxVKT0LbNvSMVcdrhH0IKji4_XpA",
+authDomain: "pdca-fb469.firebaseapp.com",
+projectId: "pdca-fb469",
+storageBucket: "pdca-fb469.firebasestorage.app",
+messagingSenderId: "207233804691",
+appId: "1:207233804691:web:c3f0ba6bc1212a2276e066",
+measurementId: "G-SBW3W8TJ09"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// DOM elements
+const taskForm = document.getElementById('taskForm');
+const taskListDiv = document.getElementById('taskList');
+const deleteDoneBtn = document.getElementById('deleteDone');
+
+// Statuts possibles
+const statusCycle = ['Non commencé', 'En cours', 'Terminé'];
+
+// Fonction pour afficher les tâches
+function renderTasks(tasks) {
+taskListDiv.innerHTML = '';
+tasks.forEach(task => {
+const div = document.createElement('div');
+div.className = 'task ' + (task.status === 'Non commencé' ? 'non-commence' : task.status === 'En cours' ? 'en-cours' : 'termine');
+div.innerHTML = `
+<strong>${task.title}</strong><br>
+<div class="description">${task.description}</div>
+Du ${task.startDate} au ${task.endDate}<br>
+<em>Statut: ${task.status}</em>
+`;
+div.onclick = async () => {
+// Changer statut en cycle
+const currentIndex = statusCycle.indexOf(task.status);
+const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
+await updateDoc(doc(db, 'tasks', task.id), { status: nextStatus });
+};
+taskListDiv.appendChild(div);
+});
+}
+
+// Récupération en temps réel des tâches triées par date de début
+const q = query(collection(db, 'tasks'), orderBy('startDate'));
+onSnapshot(q, (snapshot) => {
+const tasks = [];
+snapshot.forEach(doc => {
+tasks.push({ id: doc.id, ...doc.data() });
+});
+renderTasks(tasks);
+});
+
+// Ajout d’une nouvelle tâche
+taskForm.addEventListener('submit', async e => {
+e.preventDefault();
+const title = taskForm.title.value.trim();
+const description = taskForm.description.value.trim();
+const startDate = taskForm.startDate.value;
+const endDate = taskForm.endDate.value;
+
+if (!title || !description || !startDate || !endDate) {
+alert("Merci de remplir tous les champs");
+return;
+}
+
+await addDoc(collection(db, 'tasks'), {
+title,
+description,
+startDate,
+endDate,
+status: 'Non commencé'
+});
+
+taskForm.reset();
+});
+
+// Suppression des tâches terminées
+deleteDoneBtn.onclick = async () => {
+const snapshot = await getDocs(collection(db, 'tasks'));
+snapshot.forEach(async docSnap => {
+if (docSnap.data().status === 'Terminé') {
+await deleteDoc(doc(db, 'tasks', docSnap.id));
+}
+});
+};
+</script>
 </head>
 <body>
-  <h2>Ajouter une tâche</h2>
-  <form id="taskForm">
-    <input type="text" id="title" placeholder="Titre" required><br>
-    <textarea id="description" placeholder="Description" required style="width:100%; height:80px; font-size:18px;"></textarea><br>
-    <input type="date" id="startDate" required>
-    <input type="date" id="endDate" required><br>
-    <button type="submit">Ajouter</button>
-  </form>
+<h2>Ajouter une tâche</h2>
+<form id="taskForm">
+<input name="title" type="text" placeholder="Titre" required />
+<textarea name="description" placeholder="Description" required style="height: 80px;"></textarea>
+<input name="startDate" type="date" required />
+<input name="endDate" type="date" required />
+<button type="submit">Ajouter</button>
+</form>
 
-  <h2>Liste des tâches</h2>
-  <div id="taskList"></div>
-  <button onclick="deleteCompleted()">Supprimer les tâches terminées</button>
-
-  <script>
-    const taskList = [];
+<h2>Liste des tâches</h2>
+<div id="taskList"></div>
+<button id="deleteDone">Supprimer les tâches terminées</button>
+</body>
+</html>
 
     document.getElementById('taskForm').addEventListener('submit', function(e) {
       e.preventDefault();
